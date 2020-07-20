@@ -1,0 +1,179 @@
+package friends;
+
+import java.util.ArrayList;
+
+import structures.Queue;
+
+
+public class Friends {
+
+	/**
+	 * Finds the shortest chain of people from p1 to p2. Chain is returned as a
+	 * sequence of names starting with p1, and ending with p2. Each pair (n1,n2) of
+	 * consecutive names in the returned chain is an edge in the graph.
+	 *
+	 * @param g
+	 *            Graph for which shortest chain is to be found.
+	 * @param p1
+	 *            Person with whom the chain originates
+	 * @param p2
+	 *            Person at whom the chain terminates
+	 * @return The shortest chain from p1 to p2. Null or empty array list if there
+	 *         is no path from p1 to p2
+	 */
+	public static ArrayList<String> shortestChain(Graph g, String p1, String p2) {
+		if (g == null || p1 == null || p2 == null || !g.map.containsKey(p1) || !g.map.containsKey(p2)
+				|| (p1.equals(p2))) {
+			return null;
+		}
+
+		Person a = g.members[g.map.get(p1)];
+		Person b = g.members[g.map.get(p2)];
+		ArrayList<Person> fringe = new ArrayList<Person>(); // person integer
+
+		if (b == null || a == null) {
+			return null;
+		}
+		int[] vertex = new int[g.members.length];
+		vertex[g.map.get(p1)] = 0;
+
+		for (int i = 0; i < g.members.length; i++) {
+			if (i != g.map.get(p1)) {
+				vertex[i] = -1;
+			}
+		}
+
+		for (Friend f = a.first; f != null; f = f.next) { //
+			vertex[f.fnum] = 1;
+			fringe.add(g.members[f.fnum]);
+		}
+
+		while (!fringe.isEmpty()) {
+			Person c = fringe.get(0); // minValue(fringe, g); // u mant minValue
+			if (c == b) {
+				break;
+			}
+			fringe.remove(c);
+			for (Friend f = c.first; f != null; f = f.next) {
+				if (vertex[f.fnum] == -1) {
+					vertex[f.fnum] = 1 + vertex[g.map.get(c.name)];
+					if (fringe.size() == 0) {
+						fringe.add(g.members[f.fnum]);
+					} else {
+						fringe.add(fringe.size(), g.members[f.fnum]);
+					}
+				} else {
+					continue;
+				}
+			}
+		}
+
+		ArrayList<String> x = new ArrayList<String>();
+		int v2 = g.map.get(p2); // index of destiantion
+		int steps = vertex[v2];
+		if (steps == -1) {
+			return x;
+		}
+		x.add(b.name);
+		Person temp = b;
+		steps--;
+		while (steps > 0) {
+			for (int i = 0; i < vertex.length; i++) {
+				if (vertex[i] == steps && isConnected(g.members[i], temp, g)) {
+					x.add(g.members[i].name);
+					temp = g.members[i];
+					steps--;
+					break;
+				}
+			}
+		}
+		x.add(a.name);
+
+		return removeDup(reverseAL(x));
+
+	}
+
+	private static ArrayList<String> removeDup(ArrayList<String> a) {
+		ArrayList<String> x= new ArrayList<String>();
+		for (int i = 0; i < a.size(); i++) {
+			String s = a.get(i);
+			if (!x.contains(s)) {
+				x.add(s);
+			}
+		}
+		return x;
+	}
+
+	private static ArrayList<String> reverseAL(ArrayList<String> x) {
+		ArrayList<String> y = new ArrayList<String>();
+		for (int i = x.size() - 1; i >= 0; i--) {
+			y.add(x.get(i));
+		}
+		return y;
+	}
+
+	private static boolean isConnected(Person p, Person temp, Graph g) {
+		for (Friend f = temp.first; f != null; f = f.next) {
+			if (g.members[f.fnum] == p) {
+				return true;
+			}
+		}
+		return false;
+
+	}
+
+	/**
+	 * Finds all cliques of students in a given school.
+	 *
+	 * Returns an array list of array lists - each constituent array list contains
+	 * the names of all students in a clique.
+	 *
+	 * @param g
+	 *            Graph for which cliques are to be found.
+	 * @param school
+	 *            Name of school
+	 * @return Array list of clique array lists. Null or empty array list if there
+	 *         is no student in the given school
+	 */
+	public static ArrayList<ArrayList<String>> cliques(Graph g, String school) {
+		if (g == null || school == null) {
+			return null;
+		}
+		ArrayList<ArrayList<String>> cliques = new ArrayList<ArrayList<String>>();
+		ArrayList<Person> sameSchool = new ArrayList<Person>();
+		for (int i = 0; i < g.members.length; i++) {
+			Person curr = g.members[i]; // current Person object at each iteration of Person array members
+			if (curr.student && curr.school.equals(school)) {
+				sameSchool.add(curr);
+			}
+		}
+		while (!sameSchool.isEmpty()) {
+			cliques.add(clique(g, sameSchool.get(0), school, sameSchool));
+		}
+		return cliques;
+	}
+
+	private static ArrayList<String> clique(Graph g, Person p, String school, ArrayList<Person> sameSchool) {
+		ArrayList<Person> clique = new ArrayList<Person>();
+		clique.add(p);
+		sameSchool.remove(p);
+		Queue<Person> q = new Queue<Person>();
+		q.enqueue(p);
+		while (!q.isEmpty()) {
+			Person pa = q.dequeue();
+			for (Friend f = pa.first; f != null; f = f.next) {
+				Person curr = g.members[f.fnum];
+				if (curr.student && sameSchool.contains(curr)) {
+					clique.add(curr);
+					sameSchool.remove(curr);
+					q.enqueue(curr);
+				}
+			}
+		}
+		ArrayList<String> cliqueName = new ArrayList<String>();
+		for (int i = 0; i < clique.size(); i++) {
+			cliqueName.add(clique.get(i).name);
+		}
+
+		return cliqueName;
+	}

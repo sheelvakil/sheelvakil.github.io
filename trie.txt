@@ -1,0 +1,172 @@
+package trie;
+
+import java.util.ArrayList;
+
+/**
+ * This class implements a Trie.
+ * 
+ *
+ */
+public class Trie {
+private static int y = 0;
+private static int x = 0;
+	// prevent instantiation
+	private Trie() {
+	}
+
+	/**
+	 * Builds a trie by inserting all words in the input array, one at a time, in
+	 * sequence FROM FIRST TO LAST. (The sequence is IMPORTANT!) The words in the
+	 * input array are all lower case.
+	 * 
+	 * @param allWords
+	 *            Input array of words (lowercase) to be inserted.
+	 * @return Root of trie with all words inserted from the input array
+	 */
+	public static TrieNode buildTrie(String[] allWords) {
+		TrieNode root = new TrieNode(null, null, null);
+		root.firstChild = new TrieNode(new Indexes(0, (short) 0, (short) (allWords[0].length() - 1)), null, null);
+		TrieNode firstWord = root.firstChild;
+		for (int i = 1; i < allWords.length; i++) { // build tree, one word at a time from allWords array
+			y = i;
+			TrieNode ptr = firstWord; // first word after root
+			String insertWord = allWords[i]; // word we are inputting into tree
+			TrieNode prefixNode = findPrefix(ptr, insertWord, allWords);
+			if (x == 1) {
+				prefixNode.sibling = new TrieNode(
+						new Indexes(i, (short) prefixNode.substr.startIndex, (short) (allWords[i].length() - 1)), null,
+						null); // need to fix this
+			} else if (x == 2) {
+				updatePrefixNode(prefixNode, prefix, allWords);
+				addTwoNewChildren(prefixNode, prefix, allWords, i);
+			}
+		}
+		return root;
+	}
+	
+	private static void addTwoNewChildren(TrieNode root, String prefix, String[] allWords, int i) {
+		root.firstChild = new TrieNode(new Indexes(root.substr.wordIndex, (short) (root.substr.endIndex + 1),
+				(short) (allWords[root.substr.wordIndex].length() - 1)), null, null);
+		root.firstChild.sibling = new TrieNode(
+				new Indexes(i, (short) (root.substr.endIndex + 1), (short) (allWords[i].length() - 1)), null, null);
+	}
+
+	private static void updatePrefixNode(TrieNode root, String prefix, String[] allWords) {
+		String s = allWords[root.substr.wordIndex];
+		root.substr.startIndex = (short) s.indexOf(prefix);
+		root.substr.endIndex = (short) (root.substr.startIndex + (prefix.length() - 1)); //
+	}
+
+	private static TrieNode findPrefix(TrieNode root, String s, String[] allWords) {
+		String w = commonPrefix(s,
+				allWords[root.substr.wordIndex].substring(root.substr.startIndex, root.substr.endIndex + 1));
+		if (w.length() > 0) {
+			if (root.firstChild == null) {
+				x = 2;
+				prefix = w;
+				return root;
+			}
+			return findPrefix(root.firstChild, s.substring(w.length()), allWords);
+		}
+		if (root.sibling == null) {
+			x = 1;
+			return root;
+		}
+		return findPrefix(root.sibling, s, allWords);
+	}
+
+	private static String commonPrefix(String s1, String s2) { // find prefix between 2 strings
+		String prefix = "";
+		int w = Math.min(s1.length(), s2.length());
+		for (int i = 0; i < w; i++) {
+			if (s1.charAt(i) == s2.charAt(i)) {
+				prefix += s1.charAt(i);
+			} else {
+				return prefix;
+			}
+		}
+		return prefix;
+	}
+
+	public static ArrayList<TrieNode> completionList(TrieNode root, String[] allWords, String prefix) {
+		if (root == null) {
+			return null;
+		}
+		ArrayList<TrieNode> x = new ArrayList<TrieNode>();
+		TrieNode ptr = root.firstChild;
+		TrieNode prefixNode = findPrefixNode(ptr, prefix, allWords);
+		if (prefixNode == null) { // prefix does not exist
+			return null;
+		}
+		TrieNode theChild = prefixNode.firstChild; // first subtree of the prefix tree that needs to be added to list
+		AllPrefixNodes(x, theChild);
+		return x;
+	}
+
+	private static void AllPrefixNodes(ArrayList<TrieNode> x, TrieNode child) {
+		if (child == null) {
+			return;
+		} else if (child.firstChild == null) {
+			x.add(child);
+			AllPrefixNodes(x, child.sibling); // after one node is finsihed, it moves onto sibling;
+		} else {
+			AllPrefixNodes(x, child.sibling);
+			AllPrefixNodes(x, child.firstChild);
+		}
+	}
+
+	private static TrieNode findPrefixNode(TrieNode node, String prefix, String[] allWords) {
+		if ((node == null || findPrefixBasedOnIndexes(allWords, node.substr).equals(prefix))
+				|| findPrefixBasedOnIndexes(allWords, node.substr).contains(prefix)) { // example: prefix - "pos"
+																						// nodeString- "poss"
+			return node;
+		}
+		if (prefix.contains(findPrefixBasedOnIndexes(allWords, node.substr))) { // example: prefix - "pot" nodeString -
+																				// "po"
+			return findPrefixNode(node.firstChild, prefix.substring(node.substr.endIndex /* + 1 */), allWords);
+		}
+		return findPrefixNode(node.sibling, prefix, allWords);
+	}
+
+	private static String findPrefixBasedOnIndexes(String[] allWords, Indexes substr) { // returns the containing prefix
+																						// in node
+		return allWords[substr.wordIndex].substring(substr.startIndex, substr.endIndex + 1);
+	}
+
+	public static void print(TrieNode root, String[] allWords) {
+		System.out.println("\nTRIE\n");
+		print(root, 1, allWords);
+	}
+
+	private static void print(TrieNode root, int indent, String[] words) {
+		if (root == null) {
+			return;
+		}
+		for (int i = 0; i < indent - 1; i++) {
+			System.out.print("    ");
+		}
+
+		if (root.substr != null) {
+			String pre = words[root.substr.wordIndex].substring(0, root.substr.endIndex + 1);
+			System.out.println("      " + pre);
+		}
+
+		for (int i = 0; i < indent - 1; i++) {
+			System.out.print("    ");
+		}
+		System.out.print(" ---");
+		if (root.substr == null) {
+			System.out.println("root");
+		} else {
+			System.out.println(root.substr);
+		}
+
+		for (TrieNode ptr = root.firstChild; ptr != null; ptr = ptr.sibling) {
+			for (int i = 0; i < indent - 1; i++) {
+				System.out.print("    ");
+			}
+			System.out.println("     |");
+			print(ptr, indent + 1, words);
+		}
+	}
+}
